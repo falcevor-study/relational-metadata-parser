@@ -31,7 +31,7 @@ class Element(minidomElement):
 
         for a_name in a_names:
             writer.write(" %s=\"" % a_name)
-            _write_data(writer, attrs[a_name].value)
+            _write_data(writer, str(attrs[a_name].value))
             writer.write("\"")
         if self.childNodes:
             writer.write(">")
