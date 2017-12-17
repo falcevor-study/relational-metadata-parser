@@ -351,8 +351,6 @@ def _create_constraint(attr_dict):
             constraint.has_value_edit = attr_dict[attr]
         elif attr == 'cascading_delete':
             constraint.cascading_delete = attr_dict[attr]
-        elif attr == 'full_cascading_delete':
-            constraint.full_cascading_delete = attr_dict[attr]
         elif attr == 'id':
             constraint_id = attr_dict[attr]
         elif attr == 'table_id':

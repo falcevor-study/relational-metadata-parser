@@ -223,10 +223,6 @@ def _create_table(attr_dict):
             table.name = attr_dict[attr].value
         elif attr == 'description':
             table.description = attr_dict[attr].value
-        elif attr == 'ht_table_flags':
-            table.ht_table_flags = attr_dict[attr].value
-        elif attr == 'access_level':
-            table.access_level = attr_dict[attr].value
         elif attr == 'props':
             for prop in attr_dict[attr].value.split(', '):
                 if prop == 'add':
@@ -314,9 +310,9 @@ def _create_constraint(attr_dict):
                 if prop == 'has_value_edit':
                     constraint.has_value_edit = True
                 elif prop == 'cascading_delete':
-                    constraint.cascading_delete = True
+                    constraint.cascading_delete = False
                 elif prop == 'full_cascading_delete':
-                    constraint.full_cascading_delete = True
+                    constraint.cascading_delete = True
                 else:
                     raise UnsupportedPropertyError(prop)
         else:
@@ -342,16 +338,14 @@ def _create_index(attr_dict):
             detail = IndexDetail()
             detail.value = attr_dict[attr].value
             index.details.append(detail)
-        elif attr == 'kind':
-            index.kind = attr_dict[attr].value
         elif attr == 'props':
             for prop in attr_dict[attr].value.split(', '):
                 if prop == 'local':
                     index.local = True
                 elif prop == 'uniqueness':
-                    index.uniqueness = True
+                    index.kind = 'uniqueness'
                 elif prop == 'fulltext':
-                    index.fulltext = True
+                    index.kind = 'fulltext'
                 else:
                     raise UnsupportedPropertyError(prop)
         else:

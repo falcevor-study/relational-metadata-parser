@@ -47,10 +47,8 @@ class Table:
     def __init__(self):
         self.name = None
         self.description = None
-        self.ht_table_flags = None
         self.temporal_mode = None
         self.means = None
-        self.access_level = None
 
         self.add = False
         self.edit = False
@@ -89,10 +87,9 @@ class Constraint:
         self.reference = None
         self.constraint = None
         self.expression = None
+        self.cascading_delete = None
 
         self.has_value_edit = False
-        self.cascading_delete = False
-        self.full_cascading_delete = False
 
         self.details = []
 
@@ -112,8 +109,6 @@ class Index:
         self.kind = None
 
         self.local = False
-        self.uniqueness = False
-        self.fulltext = False
 
         self.details = []
 

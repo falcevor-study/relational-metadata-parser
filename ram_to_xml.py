@@ -164,11 +164,6 @@ def _create_table_dom(table: Table, doc: Document):
         props.append('delete')
     if len(props) > 0:
         table_dom.setAttribute('props', ', '.join(props))
-
-    if table.ht_table_flags:
-        table_dom.setAttribute('ht_table_flags', table.ht_table_flags)
-    if table.access_level:
-        table_dom.setAttribute('access_level', table.access_level)
     return table_dom
 
 
@@ -235,9 +230,9 @@ def _create_constraint_dom(constraint: Constraint, doc: Document):
     props = []
     if constraint.has_value_edit:
         props.append('has_value_edit')
-    if constraint.cascading_delete:
+    if constraint.cascading_delete == False:
         props.append('cascading_delete')
-    if constraint.full_cascading_delete:
+    if constraint.cascading_delete == True:
         props.append('full_cascading_delete')
     if len(props) > 0:
         constraint_dom.setAttribute('props', ', '.join(props))
@@ -256,15 +251,13 @@ def _create_index_dom(index: Index, doc: Document):
         index_dom.setAttribute('name', index.name)
     if len(index.details) == 1:
         index_dom.setAttribute('field', index.details[0].value)
-    if index.kind:
-        index_dom.setAttribute('kind', index.kind)
 
     props = []
     if index.local:
         props.append('local')
-    if index.uniqueness:
+    if index.kind == 'uniqueness':
         props.append('uniqueness')
-    if index.fulltext:
+    if index.kind == 'fulltext':
         props.append('fulltext')
     if len(props) > 0:
         index_dom.setAttribute('props', ', '.join(props))

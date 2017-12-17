@@ -72,7 +72,13 @@ class DbdUploadConnection:
         :return: None
         """
         query = self.config.get('UPLOADING', 'schema')
-        self.cursor.execute(query, {'name': schema.name})
+        self.cursor.execute(query, {
+                                    'name': schema.name,
+                                    'fulltext_engine': schema.fulltext_engine,
+                                    'version': schema.version,
+                                    'description': schema.description
+                                    }
+                            )
 
     def upload_domain(self, domain: Domain):
         """ Выгрузить данные из объекта домена во временный источник доменов.
@@ -232,7 +238,7 @@ def upload(schemas: list, db_file: str):
     conn.create_dbd_repr()
     conn.create_tmp_dbd_repr()
 
-    conn.cursor.execute(BEGIN_TRANSACTION)
+    conn.cursor.executescript(BEGIN_TRANSACTION)
 
     for schema in schemas:
         conn.upload_schema(schema)

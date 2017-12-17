@@ -4,322 +4,311 @@ from __future__ import unicode_literals
 
 CURRENT_DBD_VERSION = '3.1'
 
-SQL_DBD_PRE_INIT = """\
-pragma foreign_keys = on;
-
-begin transaction;
-
---
--- Каталог схем для таблиц
---
-create table dbd$schemas (
-    id integer primary key autoincrement not null,
-    name varchar not null -- имя схемы
-);
+SQL_DBD_PRE_INIT = """
+    CREATE TABLE dbd$schemas (
+         id              INTEGER PRIMARY KEY AUTOINCREMENT NOT NULL
+        ,name            VARCHAR                           NOT NULL
+        ,fulltext_engine VARCHAR                               NULL
+        ,version         VARCHAR                               NULL
+        ,description     VARCHAR                               NULL
+    );
 """
 
 SQL_DBD_DOMAINS_TABLE_INIT = """
---
--- Домены
---
-create table dbd$domains (
-    id  integer primary key autoincrement default(null),
-    name varchar unique default(null),  -- имя домена
-    description varchar default(null),  -- описание
-    data_type_id integer not null,      -- идентификатор типа (dbd$data_types)
-    length integer default(null),       -- длина
-    char_length integer default(null),  -- длина в символах
-    precision integer default(null),    -- точность
-    scale integer default(null),        -- количество знаков после запятой
-    width integer default(null),        -- ширина визуализации в символах
-    align char default(null),           -- признак выравнивания
-    show_null boolean default(null),    -- нужно показывать нулевое значение?
-    show_lead_nulls boolean default(null),      -- следует ли показывать лидирующие нули?
-    thousands_separator boolean default(null),  -- нужен ли разделитель тысяч?
-    summable boolean default(null),             -- признак того, что поле является суммируемым
-    case_sensitive boolean default(null),       -- признак необходимости регистронезависимого поиска для поля
-    uuid varchar unique not null COLLATE NOCASE -- уникальный идентификатор домена
-);
-
-create index "idx.FZX832TFV" on dbd$domains(data_type_id);
-create index "idx.4AF9IY0XR" on dbd$domains(uuid);
+    CREATE TABLE dbd$domains (
+         id                  INTEGER PRIMARY KEY AUTOINCREMENT        DEFAULT(NULL)     NULL
+        ,name                VARCHAR                           UNIQUE DEFAULT(NULL)     NULL               
+        ,description         VARCHAR                                  DEFAULT(NULL)     NULL               
+        ,data_type_id        INTEGER                                                NOT NULL               
+        ,length              INTEGER                                  DEFAULT(NULL)     NULL               
+        ,char_length         INTEGER                                  DEFAULT(NULL)     NULL               
+        ,precision           INTEGER                                  DEFAULT(NULL)     NULL               
+        ,scale               INTEGER                                  DEFAULT(NULL)     NULL               
+        ,width               INTEGER                                  DEFAULT(NULL)     NULL               
+        ,align               CHAR                                     DEFAULT(NULL)     NULL               
+        ,show_null           BOOLEAN                                  DEFAULT(NULL)     NULL               
+        ,show_lead_nulls     BOOLEAN                                  DEFAULT(NULL)     NULL               
+        ,thousands_separator BOOLEAN                                  DEFAULT(NULL)     NULL               
+        ,summable            BOOLEAN                                  DEFAULT(NULL)     NULL               
+        ,case_sensitive      BOOLEAN                                  DEFAULT(NULL)     NULL               
+        ,uuid                VARCHAR                           UNIQUE               NOT NULL COLLATE NOCASE
+    );
+    
+    CREATE INDEX "idx.FZX832TFV" ON dbd$domains(data_type_id);
+    CREATE INDEX "idx.4AF9IY0XR" ON dbd$domains(uuid);
 """
 
 SQL_DBD_TABLES_TABLE_INIT = """
---
--- Каталог таблиц
---
-create table dbd$tables (
-    id integer primary key autoincrement default(null),
-    schema_id integer default(null),      -- идетификатор схемы (dbd$schemas)
-    name varchar unique,                  -- имя таблицы
-    description varchar default(null),    -- описание
-    can_add boolean default(null),        -- разрешено ли добавление в таблицу
-    can_edit boolean default(null),       -- разрешено ли редактирование  таблице?
-    can_delete boolean default(null),     -- разрешено ли удаление в таблице
-    temporal_mode varchar default(null),  -- временная таблица или нет? Если временная, то какого типа?
-    means varchar default(null),          -- шаблон описания записи таблицы
-    uuid varchar unique not null COLLATE NOCASE  -- уникальный идентификатор таблицы
-);
-
-create index "idx.GCOFIBEBJ" on dbd$tables(name);
-create index "idx.2J02T9LQ7" on dbd$tables(uuid);
+    CREATE TABLE dbd$tables (
+         id            INTEGER PRIMARY KEY AUTOINCREMENT        DEFAULT(NULL)     NULL
+        ,schema_id     INTEGER                                  DEFAULT(NULL)     NULL  
+        ,name          VARCHAR                           UNIQUE                   NULL  
+        ,description   VARCHAR                                  DEFAULT(NULL)     NULL  
+        ,can_add       BOOLEAN                                  DEFAULT(NULL)     NULL  
+        ,can_edit      BOOLEAN                                  DEFAULT(NULL)     NULL  
+        ,can_delete    BOOLEAN                                  DEFAULT(NULL)     NULL  
+        ,temporal_mode VARCHAR                                  DEFAULT(NULL)     NULL 
+        ,means         VARCHAR                                  DEFAULT(NULL)     NULL         
+        ,uuid          VARCHAR                           UNIQUE               NOT NULL COLLATE NOCASE 
+    );  
+    
+    CREATE INDEX "idx.GCOFIBEBJ" ON dbd$tables(name);
+    CREATE INDEX "idx.2J02T9LQ7" ON dbd$tables(uuid);
 """
 
 SQL_DBD_TABLES_INIT = """
---
--- Поля таблиц
---
-create table dbd$fields (
-    id integer primary key autoincrement default(null),
-    table_id integer not null,             -- идентификатор таблицы (dbd$tables)
-    position integer not null,             -- номер поля в таблице (для упорядочивания полей)
-    name varchar not null,                 -- латинское имя поля (будет использовано в схеме Oracle)
-    russian_short_name varchar not null,   -- русское имя поля для отображения пользователю в интерактивных режимах
-    description varchar default(null),     -- описание
-    domain_id integer not null,            -- идентификатор типа поля (dbd$domains)
-    can_input boolean default(null),       -- разрешено ли пользователю вводить значение в поле?
-    can_edit boolean default(null),        -- разрешено ли пользователю изменять значение в поле?
-    show_in_grid boolean default(null),    -- следует ли отображать значение поля в браузере таблицы?
-    show_in_details boolean default(null), -- следует ли отображать значение поля в полной информации о записи таблицы?
-    is_mean boolean default(null),         -- является ли поле элементом описания записи таблицы?
-    autocalculated boolean default(null),  -- признак того, что значение в поле вычисляется программным кодом
-    required boolean default(null),        -- признак того, что поле дорлжно быть заполнено
-    uuid varchar unique not null COLLATE NOCASE -- уникальный идентификатор поля
-);
+    CREATE TABLE dbd$fields (
+         id                 INTEGER PRIMARY KEY AUTOINCREMENT        DEFAULT(NULL)     NULL
+        ,table_id           INTEGER                                                NOT NULL             
+        ,position           INTEGER                                                NOT NULL             
+        ,name               VARCHAR                                                NOT NULL             
+        ,russian_short_name VARCHAR                                                NOT NULL  
+        ,description        VARCHAR                                  DEFAULT(NULL)     NULL 
+        ,domain_id          INTEGER                                                NOT NULL     
+        ,can_input          BOOLEAN                                  DEFAULT(NULL)     NULL   
+        ,can_edit           BOOLEAN                                  DEFAULT(NULL)     NULL   
+        ,show_in_grid       BOOLEAN                                  DEFAULT(NULL)     NULL   
+        ,show_in_details    BOOLEAN                                  DEFAULT(NULL)     NULL
+        ,is_mean            BOOLEAN                                  DEFAULT(NULL)     NULL 
+        ,autocalculated     BOOLEAN                                  DEFAULT(NULL)     NULL 
+        ,required           BOOLEAN                                  DEFAULT(NULL)     NULL 
+        ,uuid               VARCHAR                           UNIQUE               NOT NULL COLLATE NOCASE
+    );
+    
+    CREATE INDEX "idx.7UAKR6FT7" ON dbd$fields(table_id);
+    CREATE INDEX "idx.7HJ6KZXJF" ON dbd$fields(position);
+    CREATE INDEX "idx.74RSETF9N" ON dbd$fields(name);
+    CREATE INDEX "idx.6S0E8MWZV" ON dbd$fields(domain_id);
+    CREATE INDEX "idx.88KWRBHA7" ON dbd$fields(uuid);
+    
+    
+    CREATE TABLE dbd$constraints (
+         id               INTEGER PRIMARY KEY AUTOINCREMENT        DEFAULT(NULL)     NULL
+        ,table_id         INTEGER                                                NOT NULL                          
+        ,name             VARCHAR                                  DEFAULT(NULL)     NULL                       
+        ,constraint_type  CHAR                                     DEFAULT(NULL)     NULL       
+        ,reference        INTEGER                                  DEFAULT(NULL)     NULL 
+        ,unique_key_id    INTEGER                                  DEFAULT(NULL)     NULL 
+        ,has_value_edit   BOOLEAN                                  DEFAULT(NULL)     NULL 
+        ,cascading_delete BOOLEAN                                  DEFAULT(NULL)     NULL 
+        ,expression       VARCHAR                                  DEFAULT(NULL)     NULL
+        ,uuid             VARCHAR                           UNIQUE               NOT NULL COLLATE NOCASE 
+    );
+    
+    CREATE INDEX "idx.6F902GEQ3" ON dbd$constraints(table_id);
+    CREATE INDEX "idx.6SRYJ35AJ" ON dbd$constraints(name);
+    CREATE INDEX "idx.62HLW9WGB" ON dbd$constraints(constraint_type);
+    CREATE INDEX "idx.5PQ7Q3E6J" ON dbd$constraints(reference);
+    CREATE INDEX "idx.92GH38TZ4" ON dbd$constraints(unique_key_id);
+    CREATE INDEX "idx.6IOUMJINZ" ON dbd$constraints(uuid);
 
-create index "idx.7UAKR6FT7" on dbd$fields(table_id);
-create index "idx.7HJ6KZXJF" on dbd$fields(position);
-create index "idx.74RSETF9N" on dbd$fields(name);
-create index "idx.6S0E8MWZV" on dbd$fields(domain_id);
-create index "idx.88KWRBHA7" on dbd$fields(uuid);
 
---
--- Спец. настройки описателя
---
-create table dbd$settings (
-    key varchar primary key not null,
-    value varchar,
-    valueb BLOB
-);
+    CREATE TABLE dbd$constraint_details (
+         id            INTEGER PRIMARY KEY AUTOINCREMENT DEFAULT(NULL)     NULL
+        ,constraint_id INTEGER                                         NOT NULL          
+        ,position      INTEGER                                         NOT NULL               
+        ,field_id      INTEGER                                         NOT NULL  
+    );
+    
+    CREATE INDEX "idx.5CYTJWVWR" ON dbd$constraint_details(constraint_id);
+    CREATE INDEX "idx.507FDQDMZ" ON dbd$constraint_details(position);
+    CREATE INDEX "idx.4NG17JVD7" ON dbd$constraint_details(field_id);
 
---
--- Ограничения
---
-create table dbd$constraints (
-    id integer primary key autoincrement default (null),
-    table_id integer not null,                           -- идентификатор таблицы (dbd$tables)
-    name varchar default(null),                          -- имя ограничения
-    constraint_type char default(null),                  -- вид ограничения
-    reference integer default(null),        -- идентификатор таблицы (dbd$tables), на которую ссылается внешний ключ
-    unique_key_id integer default(null),    -- (опционально) идентификатор ограничения (dbd$constraints) таблицы, на которую ссылается внешний ключ (*1*)
-    has_value_edit boolean default(null),   -- признак наличия поля ввода ключа
-    cascading_delete boolean default(null), -- признак каскадного удаления для внешнего ключа
-    expression varchar default(null),       -- выражение для контрольного ограничения
-    uuid varchar unique not null COLLATE NOCASE -- уникальный идентификатор ограничения
-);
 
-create index "idx.6F902GEQ3" on dbd$constraints(table_id);
-create index "idx.6SRYJ35AJ" on dbd$constraints(name);
-create index "idx.62HLW9WGB" on dbd$constraints(constraint_type);
-create index "idx.5PQ7Q3E6J" on dbd$constraints(reference);
-create index "idx.92GH38TZ4" on dbd$constraints(unique_key_id);
-create index "idx.6IOUMJINZ" on dbd$constraints(uuid);
+    CREATE TABLE dbd$indices (
+         id       INTEGER PRIMARY KEY AUTOINCREMENT        DEFAULT(NULL)     NULL
+        ,table_id INTEGER                                  NOT NULL          NULL                  
+        ,name     VARCHAR                                  DEFAULT(NULL)     NULL                   
+        ,local    BOOLEAN                                  DEFAULT(0)        NULL                  
+        ,kind     CHAR                                     DEFAULT(NULL)     NULL                      
+        ,uuid     VARCHAR                           UNIQUE               NOT NULL COLLATE NOCASE   
+    );
+    
+    CREATE INDEX "idx.12XXTJUYZ" ON dbd$indices(table_id);
+    CREATE INDEX "idx.6G0KCWN0R" ON dbd$indices(name);
+    CREATE INDEX "idx.FQH338PQ7" ON dbd$indices(uuid);
 
---
--- Детали ограничений
---
-create table dbd$constraint_details (
-    id integer primary key autoincrement default(null),
-    constraint_id integer not null,          -- идентификатор ограничения (dbd$constraints)
-    position integer not null,               -- номер элемента ограничения
-    field_id integer not null default(null)  -- идентификатор поля (dbd$fields) в таблице, для которой определено ограничение
-);
 
-create index "idx.5CYTJWVWR" on dbd$constraint_details(constraint_id);
-create index "idx.507FDQDMZ" on dbd$constraint_details(position);
-create index "idx.4NG17JVD7" on dbd$constraint_details(field_id);
+    CREATE TABLE dbd$index_details (
+         id         INTEGER PRIMARY KEY AUTOINCREMENT DEFAULT(NULL)     NULL
+        ,index_id   INTEGER                                         NOT NULL
+        ,position   INTEGER                                         NOT NULL
+        ,field_id   INTEGER                           DEFAULT(NULL)     NULL
+        ,expression VARCHAR                           DEFAULT(NULL)     NULL
+        ,descend    BOOLEAN                           DEFAULT(NULL)     NULL              
+    );
+    
+    CREATE INDEX "idx.H1KFOWTCB" ON dbd$index_details(index_id);
+    CREATE INDEX "idx.BQA4HXWNF" ON dbd$index_details(field_id);
+    
 
---
--- Индексы
---
-create table dbd$indices (
-    id integer primary key autoincrement default(null),
-    table_id integer not null,                          -- идентификатор таблицы (dbd$tables)
-    name varchar default(null),                         -- имя индекса
-    local boolean default(0),                           -- показывает тип индекса: локальный или глобальный
-    kind char default(null),                            -- вид индекса (простой/уникальный/полнотекстовый)
-    uuid varchar unique not null COLLATE NOCASE         -- уникальный идентификатор индекса
-);
+    CREATE TABLE dbd$data_types (
+         id      INTEGER PRIMARY KEY AUTOINCREMENT        NOT NULL
+        ,type_id VARCHAR                           UNIQUE NOT NULL
+    );
 
-create index "idx.12XXTJUYZ" on dbd$indices(table_id);
-create index "idx.6G0KCWN0R" on dbd$indices(name);
-create index "idx.FQH338PQ7" on dbd$indices(uuid);
-
---
--- Детали индексов
---
-create table dbd$index_details (
-    id integer primary key autoincrement default(null),
-    index_id integer not null,                          -- идентификатор индекса (dbd$indices)
-    position integer not null,                          -- порядковый номер элемента индекса
-    field_id integer default(null),                     -- идентификатор поля (dbd$fields), участвующего в индексе
-    expression varchar default(null),                   -- выражение для индекса
-    descend boolean default(null)                       -- направление сортировки
-);
-
-create index "idx.H1KFOWTCB" on dbd$index_details(index_id);
-create index "idx.BQA4HXWNF" on dbd$index_details(field_id);
-
---
--- Типы данных
---
-create table dbd$data_types (
-    id integer primary key autoincrement, -- идентификатор типа
-    type_id varchar unique not null       -- имя типа
-);
-
-insert into dbd$data_types(type_id) values ('STRING');
-insert into dbd$data_types(type_id) values ('SMALLINT');
-insert into dbd$data_types(type_id) values ('INTEGER');
-insert into dbd$data_types(type_id) values ('WORD');
-insert into dbd$data_types(type_id) values ('BOOLEAN');
-insert into dbd$data_types(type_id) values ('FLOAT');
-insert into dbd$data_types(type_id) values ('CURRENCY');
-insert into dbd$data_types(type_id) values ('BCD');
-insert into dbd$data_types(type_id) values ('FMTBCD');
-insert into dbd$data_types(type_id) values ('DATE');
-insert into dbd$data_types(type_id) values ('TIME');
-insert into dbd$data_types(type_id) values ('DATETIME');
-insert into dbd$data_types(type_id) values ('TIMESTAMP');
-insert into dbd$data_types(type_id) values ('BYTES');
-insert into dbd$data_types(type_id) values ('VARBYTES');
-insert into dbd$data_types(type_id) values ('BLOB');
-insert into dbd$data_types(type_id) values ('MEMO');
-insert into dbd$data_types(type_id) values ('GRAPHIC');
-insert into dbd$data_types(type_id) values ('FMTMEMO');
-insert into dbd$data_types(type_id) values ('FIXEDCHAR');
-insert into dbd$data_types(type_id) values ('WIDESTRING');
-insert into dbd$data_types(type_id) values ('LARGEINT');
-insert into dbd$data_types(type_id) values ('COMP');
-insert into dbd$data_types(type_id) values ('ARRAY');
-insert into dbd$data_types(type_id) values ('FIXEDWIDECHAR');
-insert into dbd$data_types(type_id) values ('WIDEMEMO');
-insert into dbd$data_types(type_id) values ('CODE');
-insert into dbd$data_types(type_id) values ('RECORDID');
-insert into dbd$data_types(type_id) values ('SET');
-insert into dbd$data_types(type_id) values ('PERIOD');
-insert into dbd$data_types(type_id) values ('BYTE');
-insert into dbd$settings(key, value) values ('dbd.version', '%(dbd_version)s');
+    INSERT INTO dbd$data_types(type_id) VALUES ('STRING');
+    INSERT INTO dbd$data_types(type_id) VALUES ('SMALLINT');
+    INSERT INTO dbd$data_types(type_id) VALUES ('INTEGER');
+    INSERT INTO dbd$data_types(type_id) VALUES ('WORD');
+    INSERT INTO dbd$data_types(type_id) VALUES ('BOOLEAN');
+    INSERT INTO dbd$data_types(type_id) VALUES ('FLOAT');
+    INSERT INTO dbd$data_types(type_id) VALUES ('CURRENCY');
+    INSERT INTO dbd$data_types(type_id) VALUES ('BCD');
+    INSERT INTO dbd$data_types(type_id) VALUES ('FMTBCD');
+    INSERT INTO dbd$data_types(type_id) VALUES ('DATE');
+    INSERT INTO dbd$data_types(type_id) VALUES ('TIME');
+    INSERT INTO dbd$data_types(type_id) VALUES ('DATETIME');
+    INSERT INTO dbd$data_types(type_id) VALUES ('TIMESTAMP');
+    INSERT INTO dbd$data_types(type_id) VALUES ('BYTES');
+    INSERT INTO dbd$data_types(type_id) VALUES ('VARBYTES');
+    INSERT INTO dbd$data_types(type_id) VALUES ('BLOB');
+    INSERT INTO dbd$data_types(type_id) VALUES ('MEMO');
+    INSERT INTO dbd$data_types(type_id) VALUES ('GRAPHIC');
+    INSERT INTO dbd$data_types(type_id) VALUES ('FMTMEMO');
+    INSERT INTO dbd$data_types(type_id) VALUES ('FIXEDCHAR');
+    INSERT INTO dbd$data_types(type_id) VALUES ('WIDESTRING');
+    INSERT INTO dbd$data_types(type_id) VALUES ('LARGEINT');
+    INSERT INTO dbd$data_types(type_id) VALUES ('COMP');
+    INSERT INTO dbd$data_types(type_id) VALUES ('ARRAY');
+    INSERT INTO dbd$data_types(type_id) VALUES ('FIXEDWIDECHAR');
+    INSERT INTO dbd$data_types(type_id) VALUES ('WIDEMEMO');
+    INSERT INTO dbd$data_types(type_id) VALUES ('CODE');
+    INSERT INTO dbd$data_types(type_id) VALUES ('RECORDID');
+    INSERT INTO dbd$data_types(type_id) VALUES ('SET');
+    INSERT INTO dbd$data_types(type_id) VALUES ('PERIOD');
+    INSERT INTO dbd$data_types(type_id) VALUES ('BYTE');
 """ % {'dbd_version': CURRENT_DBD_VERSION}
 
 SQL_DBD_VIEWS_INIT = """
-create view dbd$view_fields as
-select
-  dbd$schemas.name "schema",
-  dbd$tables.name "table",
-  dbd$fields.position "position",
-  dbd$fields.name "name",
-  dbd$fields.russian_short_name "russian_short_name",
-  dbd$fields.description "description",
-  dbd$data_types.type_id "type_id",
-  dbd$domains.length "length",
-  dbd$domains.char_length,
-  dbd$domains.width "width",
-  dbd$domains.align "align",
-  dbd$domains.precision "precision",
-  dbd$domains.scale "scale",
-  dbd$domains.show_null "show_null",
-  dbd$domains.show_lead_nulls "show_lead_nulls",
-  dbd$domains.thousands_separator "thousands_separator",
-  dbd$domains.summable,
-  dbd$domains.case_sensitive "case_sensitive",
-  dbd$fields.can_input "can_input",
-  dbd$fields.can_edit "can_edit",
-  dbd$fields.show_in_grid "show_in_grid",
-  dbd$fields.show_in_details "show_in_details",
-  dbd$fields.is_mean "is_mean",
-  dbd$fields.autocalculated "autocalculated",
-  dbd$fields.required "required"
-from dbd$fields
-  inner join dbd$tables on dbd$fields.table_id = dbd$tables.id
-  inner join dbd$domains on dbd$fields.domain_id = dbd$domains.id
-  inner join dbd$data_types on dbd$domains.data_type_id = dbd$data_types.id
-  Left Join dbd$schemas On dbd$tables.schema_id = dbd$schemas.id
-order by
-  dbd$tables.name,
-  dbd$fields.position;
-
-create view dbd$view_domains as
-select
-  dbd$domains.id,
-  dbd$domains.name,
-  dbd$domains.description,
-  dbd$data_types.type_id,
-  dbd$domains.length,
-  dbd$domains.char_length,
-  dbd$domains.width,
-  dbd$domains.align,
-  dbd$domains.summable,
-  dbd$domains.precision,
-  dbd$domains.scale,
-  dbd$domains.show_null,
-  dbd$domains.show_lead_nulls,
-  dbd$domains.thousands_separator,
-  dbd$domains.case_sensitive "case_sensitive"
-from dbd$domains
-  inner join dbd$data_types on dbd$domains.data_type_id = dbd$data_types.id
-order by dbd$domains.id;
-
-create view dbd$view_constraints as
-select
-  dbd$constraints.id "constraint_id",
-  dbd$constraints.constraint_type "constraint_type",
-  dbd$constraint_details.position "position",
-  dbd$schemas.name "schema",
-  dbd$tables.name "table_name",
-  dbd$fields.name "field_name",
-  "references".name "reference"
-from
-  dbd$constraint_details
-  inner join dbd$constraints on dbd$constraint_details.constraint_id = dbd$constraints.id
-  inner join dbd$tables on dbd$constraints.table_id = dbd$tables.id
-  left join dbd$tables "references" on dbd$constraints.reference = "references".id
-  left join dbd$fields on dbd$constraint_details.field_id = dbd$fields.id
-  Left Join dbd$schemas On dbd$tables.schema_id = dbd$schemas.id
-order by
-  constraint_id, position;
-
-create view dbd$view_indices as
-select
-  dbd$indices.id "index_id",
-  dbd$indices.name as index_name,
-  dbd$schemas.name "schema",
-  dbd$tables.name as table_name,
-  dbd$indices.local,
-  dbd$indices.kind,
-  dbd$index_details.position,
-  dbd$fields.name as field_name,
-  dbd$index_details.expression,
-  dbd$index_details.descend
-from
-  dbd$index_details
-  inner join dbd$indices on dbd$index_details.index_id = dbd$indices.id
-  inner join dbd$tables on dbd$indices.table_id = dbd$tables.id
-  left join dbd$fields on dbd$index_details.field_id = dbd$fields.id
-  Left Join dbd$schemas On dbd$tables.schema_id = dbd$schemas.id
-order by
-  dbd$tables.name, dbd$indices.name, dbd$index_details.position;
+    CREATE VIEW dbd$view_fields 
+    AS
+    SELECT
+         sch.name                AS "schema"
+        ,tab.name                AS "table"
+        ,fld.position            AS "position"
+        ,fld.name                AS "name"
+        ,fld.russian_short_name  AS "russian_short_name"
+        ,fld.description         AS "description"
+        ,type.type_id            AS "type_id"
+        ,dom.length              AS "length"
+        ,dom.char_length         AS "char_length"
+        ,dom.width               AS "width"
+        ,dom.align               AS "align"
+        ,dom.precision           AS "precision"
+        ,dom.scale               AS "scale"
+        ,dom.show_null           AS "show_null"
+        ,dom.show_lead_nulls     AS "show_lead_nulls"
+        ,dom.thousands_separator AS "thousands_separator"
+        ,dom.summable            AS "summable"
+        ,dom.case_sensitive      AS "case_sensitive"
+        ,fld.can_input           AS "can_input"
+        ,fld.can_edit            AS "can_edit"
+        ,fld.show_in_grid        AS "show_in_grid"
+        ,fld.show_in_details     AS "show_in_details"
+        ,fld.is_mean             AS "is_mean"
+        ,fld.autocalculated      AS "autocalculated"
+        ,fld.required            AS "required"
+    FROM dbd$fields              AS fld
+    INNER JOIN dbd$tables     AS tab
+        ON fld.table_id = tab.id
+    INNER JOIN dbd$domains    AS dom
+        ON fld.domain_id = dom.id
+    INNER JOIN dbd$data_types AS type
+        ON dom.data_type_id = type.id
+    LEFT JOIN dbd$schemas     AS sch
+        ON tab.schema_id = sch.id
+    ORDER BY
+         bd$tables.name
+        ,bd$fields.position;
+    
+    
+    CREATE VIEW dbd$view_domains 
+    AS
+    SELECT
+         dom.id
+        ,dom.name
+        ,dom.description
+        ,type.type_id
+        ,dom.length
+        ,dom.char_length
+        ,dom.width
+        ,dom.align
+        ,dom.summable
+        ,dom.precision
+        ,dom.scale
+        ,dom.show_null
+        ,dom.show_lead_nulls
+        ,dom.thousands_separator
+        ,dom.case_sensitive "case_sensitive"
+    FROM dbd$domains          AS dom
+    INNER JOIN dbd$data_types AS type
+        ON dom.data_type_id = type.id
+    ORDER BY dom.id;
+    
+    
+    CREATE VIEW dbd$view_constraints 
+    AS
+    SELECT
+         con.id              AS "constraint_id"
+        ,con.constraint_type AS "constraint_type"
+        ,det.position        AS "position"
+        ,sch.name            AS "schema"
+        ,tab.name            AS "table_name"
+        ,fld.name            AS "field_name"
+        ,ref.name            AS "reference"
+    FROM dbd$constraint_details AS det
+    INNER JOIN dbd$constraints  AS con
+        ON det.constraint_id = con.id
+    INNER JOIN dbd$tables       AS tab
+        ON con.table_id = tab.id
+    LEFT JOIN dbd$tables        AS ref
+        ON con.reference = ref.id
+    LEFT JOIN dbd$fields        AS fld
+        ON det.field_id = fld.id
+    LEFT JOIN dbd$schemas       AS sch
+        ON tab.schema_id = sch.id
+    ORDER BY
+         constraint_id
+        ,position;
+    
+    
+    CREATE VIEW dbd$view_indices 
+    AS
+    SELECT
+         ind.id         AS "index_id"
+        ,ind.name       AS "index_name"
+        ,sch.name       AS "schema"
+        ,tab.name       AS "table_name"
+        ,ing.local
+        ,ing.kind
+        ,det.position
+        ,fld.name       AS "field_name"
+        ,det.expression
+        ,det.descend
+    FROM dbd$index_details AS det
+    INNER JOIN dbd$indices AS ind
+        ON det.index_id = ind.id
+    INNER JOIN dbd$tables  AS tab
+        ON ind.table_id = tab.id
+    LEFT JOIN dbd$fields   AS fld
+        ON det.field_id = fld.id
+    LEFT JOIN dbd$schemas  AS sch
+        ON tab.schema_id = sch.id
+    ORDER BY
+         dbd$tables.name
+        ,dbd$indices.name
+        ,dbd$index_details.position;
 """
 
 BEGIN_TRANSACTION = """
-BEGIN TRANSACTION;
+    PRAGMA FOREIGN_KEYS = ON;
+    BEGIN TRANSACTION;
 """
 
 COMMIT = """
 COMMIT;
 """
 
-SQL_DBD_Init = SQL_DBD_PRE_INIT + SQL_DBD_DOMAINS_TABLE_INIT + \
-    SQL_DBD_TABLES_TABLE_INIT + SQL_DBD_TABLES_INIT + \
-    SQL_DBD_VIEWS_INIT + COMMIT
+SQL_DBD_Init = BEGIN_TRANSACTION + SQL_DBD_PRE_INIT + SQL_DBD_DOMAINS_TABLE_INIT + \
+    SQL_DBD_TABLES_TABLE_INIT + SQL_DBD_TABLES_INIT + SQL_DBD_VIEWS_INIT + COMMIT

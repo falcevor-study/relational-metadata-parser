@@ -4,7 +4,10 @@ CURRENT_DBD_VERSION = '3.1'
 
 SQL_DBD_PRE_INIT = """\
     CREATE TEMPORARY TABLE schemas (
-        name VARCHAR UNIQUE NOT NULL
+         name            VARCHAR UNIQUE NOT NULL
+        ,fulltext_engine VARCHAR            NULL
+        ,version         VARCHAR            NULL
+        ,description     VARCHAR            NULL
     );
 """
 
