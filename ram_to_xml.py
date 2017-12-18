@@ -2,7 +2,6 @@
 Модуль, содержащий метод выгрузки объектного представления базы в RAM в файловое представление в виде XML.
 """
 
-
 from codecs import open as _open
 
 from minidom_fixed import Document
