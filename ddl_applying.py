@@ -8,6 +8,7 @@ import postgresql
 import dbd_to_ram
 import xml_to_ram
 from ddl_generator import DdlGenerator
+from ram_structure import Constraint
 from ram_structure import Domain
 from ram_structure import Index
 from ram_structure import Schema
@@ -47,12 +48,12 @@ class DbCreationConnection:
         :param db_name: название создаваемой БД
         :return: None`
         """
-
-        try:
+        db = self.conn.query('SELECT 1 from pg_database WHERE datname=\'${db_name};\''.replace('${db_name}', db_name))
+        if len(db) > 0:
             self.conn.execute('DROP DATABASE ' + db_name)
             print('База данных будет перезаписана')
-        except Exception as ex:
-            print('База данных создана')
+        else:
+            print('База данных будет создана')
 
         self.conn.execute('CREATE DATABASE ' + db_name)
         self.conn.close()
@@ -85,6 +86,17 @@ class DbCreationConnection:
         :return: None
         """
         ddl = self.gen.create_table_ddl(table, schema)
+        self.conn.execute(ddl)
+
+    def create_constraint(self, constraint: Constraint, table: Table, schema: Schema):
+        """ Создать ограничение в БД.
+
+        :param constraint: объект индекса.
+        :param table: объект таблицы.
+        :param schema: объект схемы.
+        :return: None
+        """
+        ddl = self.gen.create_constraint_ddl(constraint, table, schema)
         print(ddl)
         self.conn.execute(ddl)
 
@@ -99,40 +111,52 @@ class DbCreationConnection:
         ddl = self.gen.create_index_ddl(index, table, schema)
         self.conn.execute(ddl)
 
+    def deploy(self, db_name: str, repr_file: str):
+        """ Создать пустую базу данных PostgreSQL из реляционного, либо текстового представления метеданных.
 
-def create_database(db_name: str, repr_file: str, server_config: str):
-    """
-    Создать пустую базу данных PostgreSQL из реляционного, либо текстового представления метеданных.
+        :param db_name: название создаваемой базы данных.
+        :param repr_file: файл текстового, либо реляционного представления метеданных.
+        :param server_config: файл с конфигурацией сервера PostgreSQL
+        :return: None
+        """
+        if repr_file.endswith('.xml'):
+            schemas = xml_to_ram.read(repr_file)
+        elif repr_file.endswith('.db'):
+            schemas = dbd_to_ram.load(repr_file)
+        else:
+            raise UnsupportedFileException()
 
-    :param db_name: название создаваемой базы данных.
-    :param repr_file: файл текстового, либо реляционного представления метеданных.
-    :param server_config: файл с конфигурацией сервера PostgreSQL
-    :return: None
-    """
-    if repr_file.endswith('.xml'):
-        schemas = xml_to_ram.read(repr_file)
-    elif repr_file.endswith('.db'):
-        schemas = dbd_to_ram.load(repr_file)
-    else:
-        raise UnsupportedFileException()
+        if schemas is None or len(schemas) == 0:
+            raise UnsuccessfulTryException()
 
-    if schemas is None or len(schemas) == 0:
-        raise UnsuccessfulTryException()
+        self.create_and_connect_database(db_name)
 
-    db = DbCreationConnection(server_config)
-    db.create_and_connect_database(db_name)
+        scripts = []
+        scripts_foreign = []
 
-    for schema in schemas:
-        db.create_schema(schema)
-        for domain in schema.domains.values():
-            db.create_domain(domain, schema)
+        for schema in schemas:
+            scripts.append(self.gen.create_schema_dll(schema))
+            for domain in schema.domains.values():
+                scripts.append(self.gen.create_domain_dll(domain, schema))
 
-        db.begin_transaction()
-        for table in schema.tables.values():
-            db.create_table(table, schema)
-            for index in table.indexes:
-                db.create_index(index, table, schema)
-        db.commit()
+            for table in schema.tables.values():
+                scripts.append(self.gen.create_table_ddl(table, schema))
+
+                for index in table.indexes:
+                    scripts.append(self.gen.create_index_ddl(index, table, schema))
+
+                for constraint in table.constraints:
+                    if constraint.kind.upper() == 'FOREIGN':
+                        scripts_foreign.append(self.gen.create_constraint_ddl(constraint, table, schema))
+                    else:
+                        scripts.append(self.gen.create_constraint_ddl(constraint, table, schema))
+
+        deploy = 'BEGIN TRANSACTION;'
+        deploy += '\n'.join(scripts)
+        deploy += '\n'.join(scripts_foreign)
+        deploy += 'COMMIT;'
+
+        self.conn.execute(deploy)
 
 
 class UnsupportedFileException(Exception):

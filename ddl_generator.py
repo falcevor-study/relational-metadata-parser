@@ -64,18 +64,11 @@ class DdlGenerator:
                                     for field in table.fields.values()
                                 ]
                             )
-        constraints = '\n,'.join(
-                                    [
-                                        self.create_constraint_ddl(constraint, schema)
-                                        for constraint in table.constraints
-                                    ]
-                                )
         return string.Template(self.templates.get('table'))\
             .substitute(
                         schema_name=schema.name,
                         table_name=table.name,
-                        fields=fields,
-                        constraints=constraints
+                        fields=fields
                         )
 
     def create_field_ddl(self, field: Field, schema: Schema):
@@ -83,7 +76,7 @@ class DdlGenerator:
 
         :param field: объект поля.
         :param schema: объект схемы.
-        :return: None
+        :return: str
         """
         return string.Template(self.templates.get('field'))\
             .substitute(
@@ -92,12 +85,13 @@ class DdlGenerator:
                         schema_name=schema.name
                         )
 
-    def create_constraint_ddl(self, constraint: Constraint,  schema: Schema):
+    def create_constraint_ddl(self, constraint: Constraint, table: Table, schema: Schema):
         """ Создать DDL-инструкцию для создания ограничения в БД.
 
         :param constraint: объект ограничения.
+        :param table: объект таблицы.
         :param schema: объект схемы.
-        :return: None
+        :return: str
         """
         details = []
         for det in constraint.details:
@@ -105,17 +99,28 @@ class DdlGenerator:
             details.append(detail)
 
         if constraint.kind.upper() == 'PRIMARY':
-            return string.Template(self.templates.get('primary'))\
+            definition = string.Template(self.templates.get('primary'))\
                 .substitute(
                             values=', '.join(details)
                             )
 
         elif constraint.kind.upper() == 'FOREIGN':
-            return string.Template(self.templates.get('foreign'))\
+            definition = string.Template(self.templates.get('foreign'))\
                 .substitute(
                             values=', '.join(details),
-                            reference=schema.name + '."' + constraint.reference + '"'
+                            reference_schema=schema.name,
+                            reference_table=constraint.reference,
+                            constraint_name=constraint.name if constraint.name else ''
                             )
+        else:
+            return ''
+
+        return string.Template(self.templates.get('constraint'))\
+            .substitute(
+                schema_name=schema.name,
+                table_name=table.name,
+                constraint_definition=definition
+                )
 
     def create_index_ddl(self, index: Index, table: Table, schema: Schema):
         """ Создать DDL-инструкцию для создания индекса в БД.
@@ -123,7 +128,7 @@ class DdlGenerator:
         :param index: объект индекса.
         :param table: объект таблицы.
         :param schema: объект схемы.
-        :return: None
+        :return: str
         """
         details = []
         for det in index.details:
