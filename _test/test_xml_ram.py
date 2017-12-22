@@ -1,13 +1,11 @@
-""" Тестовый модуль, реализующий последовательный запуск создания представления базы в RAM, создания DBD-представления,
-а так же обратный процесс выгрузки DBD-RAM-XML. При этом производится сверка результата выгрузки с исходным файлом.
+""" Тестовый модуль, реализующий последовательный запуск создания представления базы в RAM и выгрузки данного
+представления назад в XML. При этом производится сверка результата выгрузки с исходным файлом.
 """
 
 from codecs import open as _open
 
-from dbd_to_ram import load
-from ram_to_dbd import upload
-from ram_to_xml import write
-from xml_to_ram import read
+from ram_repr.ram_to_xml import write
+from xml_repr.xml_to_ram import read
 
 
 def compare(source, result):
@@ -38,15 +36,13 @@ def execute(input, output):
     :return: None
     """
     schemas = read(input)
-    upload(schemas, r'C:\Studying\Коллективная разработка ПО\dbd_repr.db')
-    new_schemas = load(r'C:\Studying\Коллективная разработка ПО\dbd_repr.db')
-
-    for schema in new_schemas:
+    for schema in schemas:
         write(schema, output)
     if compare(input, output):
         print('Файлы успешно прошли проверку на идентичность.')
     else:
         print('Файлы не прошли проверку на идентичность.')
+
 
 execute('C:\\Studying\\Коллективная разработка ПО\\tasks.xml',
         'C:\\Studying\\Коллективная разработка ПО\\tasks1.xml')

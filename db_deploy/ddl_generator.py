@@ -4,12 +4,12 @@
 import configparser
 import string
 
-from ram_structure import Constraint
-from ram_structure import Domain
-from ram_structure import Field
-from ram_structure import Index
-from ram_structure import Schema
-from ram_structure import Table
+from ram_repr.ram_structure import Constraint
+from ram_repr.ram_structure import Domain
+from ram_repr.ram_structure import Field
+from ram_repr.ram_structure import Index
+from ram_repr.ram_structure import Schema
+from ram_repr.ram_structure import Table
 
 
 class DdlGenerator:
@@ -141,9 +141,12 @@ class DdlGenerator:
                 detail += det.descend.upper()
             details.append(detail)
 
+        if len(details) == 0:
+            return ''
+
         return string.Template(self.templates.get('index'))\
             .substitute(
-                        index_name=index.name if index.name else '',
+                        index_name='"' + index.name + table.name + '"' if index.name else '',
                         table_name=table.name,
                         schema_name=schema.name,
                         fields=', '.join(details)
@@ -155,8 +158,8 @@ class DdlGenerator:
         :param domain: объект домена.
         :return: str
         """
-        if domain.type.upper() in ['STRING', 'MEMO']:
-            if domain.char_length:
+        if domain.type.upper() in ['STRING', 'MEMO', 'SYSNAME', 'NVARCHAR', 'VARCHAR']:
+            if domain.char_length and int(domain.char_length) > 0:
                 return string.Template(self.templates.get('domain_type'))\
                     .substitute(
                                 type_name='varchar',
@@ -164,18 +167,29 @@ class DdlGenerator:
                                 )
             else:
                 return 'varchar'
+        elif domain.type.upper() in ['UNIQUEIDENTIFIER', 'MONEY', 'SQL_VARIANT']:
+            return 'varchar(200)'
+        elif domain.type.upper() in ['NTEXT']:
+            return 'text'
+        elif domain.type.upper() in ['NCHAR', 'CHAR']:
+            return 'CHAR'
         elif domain.type.upper() == 'BOOLEAN':
             return 'BOOLEAN'
         elif domain.type.upper() == 'DATE':
             return 'date'
         elif domain.type.upper() == 'TIME':
             return 'time'
-        elif domain.type.upper() in ['LARGEINT', 'CODE']:
+        elif domain.type.upper() in ['LARGEINT', 'CODE', 'BIGINT']:
             return 'bigint'
-        elif domain.type.upper() in ['WORD', 'BYTE', 'SMALLINT']:
+        elif domain.type.upper() in ['WORD', 'BYTE', 'SMALLINT', 'INT', 'TINYINT']:
             return 'INTEGER'
-        elif domain.type.upper() == 'BLOB':
+        elif domain.type.upper() in ['BIT']:
+            return 'bit'
+        elif domain.type.upper() in ['BLOB', 'VARBINARY', 'BINARY', 'IMAGE']:
             return 'bytea'
-        elif domain.type.upper() == 'FLOAT':
+        elif domain.type.upper() in ['FLOAT', 'REAL']:
             return 'REAL'
+        elif domain.type.upper() in ['DATETIME']:
+            return 'timestamp'
+        print(domain.type.upper())
         return ''

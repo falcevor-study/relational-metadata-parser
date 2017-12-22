@@ -1,11 +1,11 @@
 import re
 import unittest
 
-from ddl_generator import DdlGenerator
-from ram_structure import Domain
-from ram_structure import Field
-from ram_structure import Schema
-from ram_structure import Table
+from db_deploy.ddl_generator import DdlGenerator
+from ram_repr.ram_structure import Domain
+from ram_repr.ram_structure import Field
+from ram_repr.ram_structure import Schema
+from ram_repr.ram_structure import Table
 
 
 class TestDdlGenerator(unittest.TestCase):

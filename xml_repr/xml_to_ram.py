@@ -1,14 +1,14 @@
 from xml.dom.minidom import parse
 
-from ram_structure import Constraint
-from ram_structure import ConstraintDetail
-from ram_structure import Domain
-from ram_structure import Field
-from ram_structure import Index
-from ram_structure import IndexDetail
-from ram_structure import Schema
-from ram_structure import Table
-from ram_validation import validate_schema
+from ram_repr.ram_structure import Constraint
+from ram_repr.ram_structure import ConstraintDetail
+from ram_repr.ram_structure import Domain
+from ram_repr.ram_structure import Field
+from ram_repr.ram_structure import Index
+from ram_repr.ram_structure import IndexDetail
+from ram_repr.ram_structure import Schema
+from ram_repr.ram_structure import Table
+from ram_repr.ram_validation import validate_schema
 
 
 def read(path):

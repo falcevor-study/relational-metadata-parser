@@ -1,30 +1,35 @@
 import configparser
+import pyodbc
 import sqlite3
 
-from ram_structure import Constraint
-from ram_structure import ConstraintDetail
-from ram_structure import Domain
-from ram_structure import Field
-from ram_structure import Index
-from ram_structure import IndexDetail
-from ram_structure import Schema
-from ram_structure import Table
+from ram_repr.ram_structure import Constraint
+from ram_repr.ram_structure import ConstraintDetail
+from ram_repr.ram_structure import Domain
+from ram_repr.ram_structure import Field
+from ram_repr.ram_structure import Index
+from ram_repr.ram_structure import IndexDetail
+from ram_repr.ram_structure import Schema
+from ram_repr.ram_structure import Table
 
 
 class DbdDownloadConnection:
-    """ Класс, реализующий подключеине к базе SQLite для загрузки данных из источников структурных
+    """ Класс, реализующий подключеине к базе для загрузки данных из источников структурных
     элементов в виде словарей.
     """
-    def __init__(self, config_file: str, db_file):
-        self.config = configparser.ConfigParser()
-        self.config.read(config_file, 'utf-8')
-        self.conn = sqlite3.connect(db_file)
+    def __init__(self, queries_config: str, db_file=None):
+        self.queries = configparser.ConfigParser()
+        self.queries.read(queries_config, 'utf-8')
+        if db_file:
+            self.conn = sqlite3.connect(db_file)
+        else:
+            server = self.queries.get('SERVER', 'server')
+            self.conn = pyodbc.connect(server)
         self.cursor = self.conn.cursor()
 
     def __exit__(self):
         self.conn.close()
 
-    def get_result(self):
+    def _get_result(self):
         """ Получить результат последнего выполненного запроса в виде словаря.
 
         :return: dict
@@ -40,90 +45,84 @@ class DbdDownloadConnection:
 
         :return: dict
         """
-        query = self.config.get('DOWNLOADING', 'schema')
+        query = self.queries.get('DOWNLOADING', 'schema')
         self.cursor.execute(query)
-        return self.get_result()
+        return self._get_result()
 
     def load_domains(self):
         """ Загрузить словари доменов.
 
         :return: dict
         """
-        query = self.config.get('DOWNLOADING', 'domain')
+        query = self.queries.get('DOWNLOADING', 'domain')
         self.cursor.execute(query)
-        return self.get_result()
+        return self._get_result()
 
     def load_tables(self):
         """ Загрузить словари таблиц.
 
         :return: dict
         """
-        query = self.config.get('DOWNLOADING', 'table')
+        query = self.queries.get('DOWNLOADING', 'table')
         self.cursor.execute(query)
-        return self.get_result()
+        return self._get_result()
 
     def load_fields(self):
-        query = self.config.get('DOWNLOADING', 'field')
+        query = self.queries.get('DOWNLOADING', 'field')
         self.cursor.execute(query)
-        return self.get_result()
+        return self._get_result()
 
     def load_constraints(self):
         """ Загрузить словари ограничений.
 
         :return: dict
         """
-        query = self.config.get('DOWNLOADING', 'constraint')
+        query = self.queries.get('DOWNLOADING', 'constraint')
         self.cursor.execute(query)
-        return self.get_result()
+        return self._get_result()
 
     def load_index(self):
         """ Загрузить словари индексов.
 
         :return: dict
         """
-        query = self.config.get('DOWNLOADING', 'index')
+        query = self.queries.get('DOWNLOADING', 'index')
         self.cursor.execute(query)
-        return self.get_result()
+        return self._get_result()
 
     def load_constraint_details(self):
         """ Загрузить словари деталей ограничений.
 
         :return: dict
         """
-        query = self.config.get('DOWNLOADING', 'constraint_detail')
+        query = self.queries.get('DOWNLOADING', 'constraint_detail')
         self.cursor.execute(query)
-        return self.get_result()
+        return self._get_result()
 
     def load_index_details(self):
         """ Загрузить словари деталей индексов.
 
         :return: dict
         """
-        query = self.config.get('DOWNLOADING', 'index_detail')
+        query = self.queries.get('DOWNLOADING', 'index_detail')
         self.cursor.execute(query)
-        return self.get_result()
+        return self._get_result()
 
 
-def load(db_file: str):
-    """ Создать RAM-представление схемы базы посредствам загрузки струтурных компонентов из базы SQLite,
+def load(queries: str, db_file: str=None):
+    """ Создать RAM-представление схемы базы посредствам загрузки струтурных компонентов из базы,
     получаемой из файла, путь к которому передается в качестве параметра.
 
+    :param queries: путь к файлу с параметрами подключения и запросами.
     :param db_file: путь к файлу базы данных
-    :return: list
+    :return: listW
     """
-    conn = DbdDownloadConnection('dbd_queries.cfg', db_file)
+    conn = DbdDownloadConnection(queries, db_file)
 
     schemas = {}
     for schema_row in conn.load_schemas():
         schema, schema_id = _create_schema(schema_row)
         schemas[schema_id] = schema
-
-    domains = {}
-    for domain_row in conn.load_domains():
-        domain, domain_id = _create_domain(domain_row)
-        domains[domain_id] = domain
-        for schema in schemas.values():
-            schema.domains[domain.name] = domain
 
     tables = {}
     for table_row in conn.load_tables():
@@ -131,21 +130,34 @@ def load(db_file: str):
         tables[table_id] = table
         schemas[schema_id].tables[table.name] = table
 
+    domains = {}
+    for domain_row in conn.load_domains():
+        domain, domain_id = _create_domain(domain_row)
+        domains[domain_id] = domain
+        for schema in [schema for schema in schemas.values() if len(schema.tables) > 0]:
+            schema.domains[domain.name] = domain
+
     fields = {}
     for field_row in conn.load_fields():
         field, field_id, table_id = _create_field(field_row)
+        if table_id not in tables:
+            continue
         tables[table_id].fields[field.name] = field
         fields[field_id] = field
 
     constraints = {}
     for constraint_row in conn.load_constraints():
         constraint, constraint_id, table_id = _create_constraint(constraint_row)
+        if table_id not in tables:
+            continue
         tables[table_id].constraints.append(constraint)
         constraints[constraint_id] = constraint
 
     indices = {}
     for index_row in conn.load_index():
         index, index_id, table_id = _create_index(index_row)
+        if table_id not in tables:
+            continue
         tables[table_id].indexes.append(index)
         indices[index_id] = index
 
@@ -158,6 +170,8 @@ def load(db_file: str):
     index_details = {}
     for detail_row in conn.load_index_details():
         detail, detail_id, index_id = _create_index_detail(detail_row)
+        if index_id not in indices:
+            continue
         indices[index_id].details.append(detail)
         index_details[detail_id] = detail
 

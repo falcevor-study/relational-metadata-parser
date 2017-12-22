@@ -5,24 +5,25 @@ import configparser
 
 import postgresql
 
-import dbd_to_ram
-import xml_to_ram
-from ddl_generator import DdlGenerator
-from ram_structure import Constraint
-from ram_structure import Domain
-from ram_structure import Index
-from ram_structure import Schema
-from ram_structure import Table
+from db_deploy.ddl_generator import DdlGenerator
+from dbd_repr import dbd_to_ram
+from ram_repr.ram_structure import Constraint
+from ram_repr.ram_structure import Domain
+from ram_repr.ram_structure import Index
+from ram_repr.ram_structure import Schema
+from ram_repr.ram_structure import Table
+from xml_repr import xml_to_ram
 
 
 class DbCreationConnection:
     """ Подключение к серверу БД, реализующее методы создания пустой базы.
     """
-    def __init__(self, server_config):
+    def __init__(self, server_config, queries: str):
+        self.queries = queries
         self.file = open(server_config, encoding='utf-8')
         self.config = configparser.ConfigParser()
         self.config.read_file(self.file)
-        self.conn = postgresql.open(self.config.get('SERVER', 'server'))
+        self.conn = postgresql.open(self.config.get('SERVER', 'postgres_server'))
         self.gen = DdlGenerator()
 
     def __exit__(self):
@@ -48,16 +49,10 @@ class DbCreationConnection:
         :param db_name: название создаваемой БД
         :return: None`
         """
-        db = self.conn.query('SELECT 1 from pg_database WHERE datname=\'${db_name};\''.replace('${db_name}', db_name))
-        if len(db) > 0:
-            self.conn.execute('DROP DATABASE ' + db_name)
-            print('База данных будет перезаписана')
-        else:
-            print('База данных будет создана')
-
+        self.conn.execute('DROP DATABASE IF EXISTS ' + db_name)
         self.conn.execute('CREATE DATABASE ' + db_name)
         self.conn.close()
-        self.conn = postgresql.open(self.config.get('SERVER', 'server') + '/' + db_name.lower())
+        self.conn = postgresql.open(self.config.get('SERVER', 'postgres_server') + '/' + db_name.lower())
 
     def create_schema(self, schema: Schema):
         """ Создать в БД схему.
@@ -111,7 +106,7 @@ class DbCreationConnection:
         ddl = self.gen.create_index_ddl(index, table, schema)
         self.conn.execute(ddl)
 
-    def deploy(self, db_name: str, repr_file: str):
+    def deploy(self, db_name: str, repr_file: str=None, schemas: list=None):
         """ Создать пустую базу данных PostgreSQL из реляционного, либо текстового представления метеданных.
 
         :param db_name: название создаваемой базы данных.
@@ -119,15 +114,16 @@ class DbCreationConnection:
         :param server_config: файл с конфигурацией сервера PostgreSQL
         :return: None
         """
-        if repr_file.endswith('.xml'):
-            schemas = xml_to_ram.read(repr_file)
-        elif repr_file.endswith('.db'):
-            schemas = dbd_to_ram.load(repr_file)
-        else:
-            raise UnsupportedFileException()
+        if not schemas:
+            if repr_file.endswith('.xml'):
+                schemas = xml_to_ram.read(repr_file)
+            elif repr_file.endswith('.db'):
+                schemas = dbd_to_ram.load(queries=self.queries, db_file=repr_file)
+            else:
+                raise UnsupportedFileException()
 
-        if schemas is None or len(schemas) == 0:
-            raise UnsuccessfulTryException()
+            if schemas is None or len(schemas) == 0:
+                raise UnsuccessfulTryException()
 
         self.create_and_connect_database(db_name)
 
@@ -135,6 +131,8 @@ class DbCreationConnection:
         scripts_foreign = []
 
         for schema in schemas:
+            if len(schema.tables) == 0:
+                continue
             scripts.append(self.gen.create_schema_dll(schema))
             for domain in schema.domains.values():
                 scripts.append(self.gen.create_domain_dll(domain, schema))

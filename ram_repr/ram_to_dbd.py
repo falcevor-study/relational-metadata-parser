@@ -4,18 +4,18 @@ import os
 import sqlite3
 import uuid
 
-from dbd_structure import BEGIN_TRANSACTION
-from dbd_structure import COMMIT
-from dbd_structure import SQL_DBD_Init
-from dbd_temp_structure import SQL_TMP_INIT
-from ram_structure import Constraint
-from ram_structure import ConstraintDetail
-from ram_structure import Domain
-from ram_structure import Field
-from ram_structure import Index
-from ram_structure import IndexDetail
-from ram_structure import Schema
-from ram_structure import Table
+from dbd_repr.dbd_structure import BEGIN_TRANSACTION
+from dbd_repr.dbd_structure import COMMIT
+from dbd_repr.dbd_structure import SQL_DBD_Init
+from dbd_repr.dbd_temp_structure import SQL_TMP_INIT
+from ram_repr.ram_structure import Constraint
+from ram_repr.ram_structure import ConstraintDetail
+from ram_repr.ram_structure import Domain
+from ram_repr.ram_structure import Field
+from ram_repr.ram_structure import Index
+from ram_repr.ram_structure import IndexDetail
+from ram_repr.ram_structure import Schema
+from ram_repr.ram_structure import Table
 
 
 class DbdUploadConnection:
@@ -234,7 +234,7 @@ def upload(schemas: list, db_file: str):
     :param db_file: путь к файлу базы данных
     :return: None
     """
-    conn = DbdUploadConnection('dbd_queries.cfg', db_file)
+    conn = DbdUploadConnection('dbd_queries_sqlite.cfg', db_file)
     conn.create_dbd_repr()
     conn.create_tmp_dbd_repr()
 
