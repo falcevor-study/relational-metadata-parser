@@ -153,7 +153,6 @@ class DbCreationConnection:
         deploy += '\n'.join(scripts)
         deploy += '\n'.join(scripts_foreign)
         deploy += 'COMMIT;'
-
         self.conn.execute(deploy)
 
 

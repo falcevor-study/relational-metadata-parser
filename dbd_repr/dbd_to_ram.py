@@ -16,14 +16,18 @@ class DbdDownloadConnection:
     """ Класс, реализующий подключеине к базе для загрузки данных из источников структурных
     элементов в виде словарей.
     """
-    def __init__(self, queries_config: str, db_file=None):
+    def __init__(self, queries_config: str, db_file=None, db_config=None):
         self.queries = configparser.ConfigParser()
         self.queries.read(queries_config, 'utf-8')
         if db_file:
             self.conn = sqlite3.connect(db_file)
-        else:
-            server = self.queries.get('SERVER', 'server')
+        elif db_config:
+            config = configparser.ConfigParser()
+            config.read(db_config, 'utf-8')
+            server = config.get('SERVER', 'mssql_server')
             self.conn = pyodbc.connect(server)
+        else:
+            raise KeyError('Необходимо задать хотя бы одно из: файл БД; файл с параментрами БД.')
         self.cursor = self.conn.cursor()
 
     def __exit__(self):
@@ -109,7 +113,7 @@ class DbdDownloadConnection:
         return self._get_result()
 
 
-def load(queries: str, db_file: str=None):
+def load(queries: str, db_file: str=None, db_config: str=None):
     """ Создать RAM-представление схемы базы посредствам загрузки струтурных компонентов из базы,
     получаемой из файла, путь к которому передается в качестве параметра.
 
@@ -117,7 +121,7 @@ def load(queries: str, db_file: str=None):
     :param db_file: путь к файлу базы данных
     :return: listW
     """
-    conn = DbdDownloadConnection(queries, db_file)
+    conn = DbdDownloadConnection(queries, db_file, db_config)
 
     schemas = {}
     for schema_row in conn.load_schemas():

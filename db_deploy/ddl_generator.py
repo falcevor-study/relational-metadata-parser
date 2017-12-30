@@ -18,7 +18,7 @@ class DdlGenerator:
     """
     def __init__(self):
         self.config = configparser.ConfigParser()
-        self.config_file = open('ddl_templates.cfg', encoding='utf-8')
+        self.config_file = open('../ddl_templates.cfg', encoding='utf-8')
         self.config.read_file(self.config_file)
         self.templates = self.config['TEMPLATES']
 
@@ -167,12 +167,10 @@ class DdlGenerator:
                                 )
             else:
                 return 'varchar'
-        elif domain.type.upper() in ['UNIQUEIDENTIFIER', 'MONEY', 'SQL_VARIANT']:
+        elif domain.type.upper() in ['UNIQUEIDENTIFIER', 'MONEY', 'SQL_VARIANT', 'BIT']:
             return 'varchar(200)'
-        elif domain.type.upper() in ['NTEXT']:
+        elif domain.type.upper() in ['NTEXT', 'NCHAR', 'CHAR', 'BLOB', 'VARBINARY', 'BINARY', 'IMAGE']:
             return 'text'
-        elif domain.type.upper() in ['NCHAR', 'CHAR']:
-            return 'CHAR'
         elif domain.type.upper() == 'BOOLEAN':
             return 'BOOLEAN'
         elif domain.type.upper() == 'DATE':
@@ -183,10 +181,6 @@ class DdlGenerator:
             return 'bigint'
         elif domain.type.upper() in ['WORD', 'BYTE', 'SMALLINT', 'INT', 'TINYINT']:
             return 'INTEGER'
-        elif domain.type.upper() in ['BIT']:
-            return 'bit'
-        elif domain.type.upper() in ['BLOB', 'VARBINARY', 'BINARY', 'IMAGE']:
-            return 'bytea'
         elif domain.type.upper() in ['FLOAT', 'REAL']:
             return 'REAL'
         elif domain.type.upper() in ['DATETIME']:
